@@ -18,8 +18,8 @@ class RestApiTest(TestCase):
     def test_accounts_get(self):
         client = self.app.test_client()
         account_db_mock = MagicMock()
-        accounts_dicts_list = [{"id": 1, "nick": "asd", "login": "qwe", "password": hash(123)},
-                               {"id": 1, "nick": "asd", "login": "qwe", "password": hash(123)}]
+        accounts_dicts_list = [{"id": '1', "nick": "asd", "login": "qwe", "password": hash(123)},
+                               {"id": '1', "nick": "asd", "login": "qwe", "password": hash(123)}]
         account_db_mock.select.return_value = accounts_dicts_list
         Main.account_db = account_db_mock
 
@@ -45,12 +45,30 @@ class RestApiTest(TestCase):
         self.assertEqual(201, response.status_code)
         self.assertEqual(account_dict, response.json)
 
+    def test_accounts_post_with_bad_column(self):
+        client = self.app.test_client()
+        account_db_mock = MagicMock()
+        account_db_mock.insert.return_value = {}
+        account_db_mock.columns = {"id", "nick", "login", "password"}
+        Main.account_db = account_db_mock
+
+        account_dict = {"nick": "asd", "login": "qwe", "password": hash(123), "email": "asdsasd@gmail.com"}
+
+        response = client.post(
+            "http://localhost:7000/accounts",
+            json=account_dict
+        )
+
+        account_db_mock.insert.assert_not_called()
+        self.assertEqual(400, response.status_code)
+        self.assertEqual({"error": "['email'] columns not found"}, response.json)
+
     def test_accounts_post_with_id(self):
         client = self.app.test_client()
         account_db_mock = MagicMock()
-        account_db_mock.insert.return_value = True
+        account_dict = {"id": '1', "nick": "asd", "login": "qwe", "password": hash(123)}
+        account_db_mock.insert.return_value = {}
         Main.account_db = account_db_mock
-        account_dict = {"id": 1, "nick": "asd", "login": "qwe", "password": hash(123)}
 
         response = client.post(
             "http://localhost:7000/accounts",
@@ -64,6 +82,7 @@ class RestApiTest(TestCase):
     def test_accounts_post_with_db_fault(self):
         client = self.app.test_client()
         account_db_mock = Mock()
+        account_db_mock.columns = {"id", "nick", "login", "password"}
         account_db_mock.insert.return_value = False
         Main.account_db = account_db_mock
 
@@ -78,13 +97,26 @@ class RestApiTest(TestCase):
     def test_account_get(self):
         client = self.app.test_client()
         account_db_mock = MagicMock()
-        accounts_dicts = [{"id": 1, "nick": "asd", "login": "qwe", "password": hash(123)}]
+        accounts_dicts = [{"id": '1', "nick": "asd", "login": "qwe", "password": hash(123)}]
         account_db_mock.select.return_value = accounts_dicts
         Main.account_db = account_db_mock
 
         response = client.get("http://localhost:7000/accounts/1")
 
-        account_db_mock.select.assert_called_once_with({"id": 1})
+        account_db_mock.select.assert_called_once_with({"id": '1'})
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(accounts_dicts[0], response.json)
+
+    def test_account_get_bad_column(self):
+        client = self.app.test_client()
+        account_db_mock = MagicMock()
+        accounts_dicts = [{"id": '1', "nick": "asd", "login": "qwe", "password": hash(123)}]
+        account_db_mock.select.return_value = accounts_dicts
+        Main.account_db = account_db_mock
+
+        response = client.get("http://localhost:7000/accounts/1")
+
+        account_db_mock.select.assert_called_once_with({"id": '1'})
         self.assertEqual(200, response.status_code)
         self.assertEqual(accounts_dicts[0], response.json)
 
@@ -100,8 +132,9 @@ class RestApiTest(TestCase):
     def test_account_put_account(self):
         client = self.app.test_client()
         account_db_mock = MagicMock()
-        account_dict = {"id": 2, "name": "asd", "login": "qwe", "password": hash(123)}
-        modified_account_dict = {"id": 2, "name": "asd", "login": "ewq", "password": hash(123)}
+        account_db_mock.columns = {"id", "nick", "login", "password"}
+        account_dict = {"id": '2', "name": "asd", "login": "qwe", "password": hash(123)}
+        modified_account_dict = {"id": '2', "name": "asd", "login": "ewq", "password": hash(123)}
         account_db_mock.select.return_value = [account_dict]
         account_db_mock.update.return_value = [modified_account_dict]
         Main.account_db = account_db_mock
@@ -109,10 +142,28 @@ class RestApiTest(TestCase):
         response = client.put("http://localhost:7000/accounts/2",
                               json={"login": "ewq"})
 
-        account_db_mock.select.assert_called_once_with({"id": 2})
-        account_db_mock.update.assert_called_once_with({"id": 2}, {"login": "ewq"})
+        account_db_mock.select.assert_called_once_with({"id": '2'})
+        account_db_mock.update.assert_called_once_with({"id": '2'}, {"login": "ewq"})
         self.assertEqual(200, response.status_code)
         self.assertEqual([modified_account_dict], response.json)
+
+    def test_account_put_account_bad_column(self):
+        client = self.app.test_client()
+        account_db_mock = MagicMock()
+        account_db_mock.columns = {"id", "nick", "login", "password"}
+        account_dict = {"id": '2', "name": "asd", "login": "qwe", "password": hash(123)}
+        modified_account_dict = {"id": '2', "name": "asd", "login": "ewq", "password": hash(123)}
+        account_db_mock.select.return_value = [account_dict]
+        account_db_mock.update.return_value = [modified_account_dict]
+        Main.account_db = account_db_mock
+
+        response = client.put("http://localhost:7000/accounts/2",
+                              json={"login": "ewq", "email": "asdasd@gamil.com"})
+
+        account_db_mock.select.assert_called_once_with({"id": '2'})
+        account_db_mock.update.assert_not_called()
+        self.assertEqual(400, response.status_code)
+        self.assertEqual({"error": "['email'] columns not found"}, response.json)
 
     def test_account_put_account_user_not_found(self):
         client = self.app.test_client()
@@ -123,7 +174,7 @@ class RestApiTest(TestCase):
         response = client.put("http://localhost:7000/accounts/2",
                               json={"login": "ewq"})
 
-        account_db_mock.select.assert_called_once_with({"id": 2})
+        account_db_mock.select.assert_called_once_with({"id": '2'})
         account_db_mock.update.assert_not_called()
         self.assertEqual(404, response.status_code)
         self.assertEqual({"error": "account not found"}, response.json)
@@ -131,43 +182,43 @@ class RestApiTest(TestCase):
     def test_account_put_account_update_error(self):
         client = self.app.test_client()
         account_db_mock = MagicMock()
-        account_db_mock.select.return_value = [{"id": 2}]
+        account_db_mock.select.return_value = [{"id": '2'}]
         account_db_mock.update.return_value = False
         Main.account_db = account_db_mock
 
         response = client.put("http://localhost:7000/accounts/2",
                               json={"login": "ewq"})
 
-        account_db_mock.select.assert_called_once_with({"id": 2})
-        account_db_mock.update.assert_called_once_with({"id": 2}, {"login": "ewq"})
+        account_db_mock.select.assert_called_once_with({"id": '2'})
+        account_db_mock.update.assert_called_once_with({"id": '2'}, {"login": "ewq"})
         self.assertEqual(500, response.status_code)
         self.assertEqual({"error": "database failure"}, response.json)
 
     def test_account_delete(self):
         client = self.app.test_client()
         account_db_mock = MagicMock()
-        account_db_mock.select.return_value = [{"id": 2}]
+        account_db_mock.select.return_value = [{"id": '2'}]
         account_db_mock.delete.return_value = True
         Main.account_db = account_db_mock
 
         response = client.delete("http://localhost:7000/accounts/2")
 
-        account_db_mock.select.assert_called_once_with({"id": 2})
-        account_db_mock.delete.assert_called_once_with({"id": 2})
-        self.assertEqual(200, response.status_code)
-        self.assertEqual({}, response.json)
+        account_db_mock.select.assert_called_once_with({"id": '2'})
+        account_db_mock.delete.assert_called_once_with({"id": '2'})
+        self.assertEqual(204, response.status_code)
+        self.assertEqual(b'', response.data)
 
     def test_account_delete_db_failure(self):
         client = self.app.test_client()
         account_db_mock = MagicMock()
-        account_db_mock.select.return_value = [{"id": 2}]
+        account_db_mock.select.return_value = [{"id": '2'}]
         account_db_mock.delete.return_value = False
         Main.account_db = account_db_mock
 
         response = client.delete("http://localhost:7000/accounts/2")
 
-        account_db_mock.select.assert_called_once_with({"id": 2})
-        account_db_mock.delete.assert_called_once_with({"id": 2})
+        account_db_mock.select.assert_called_once_with({"id": '2'})
+        account_db_mock.delete.assert_called_once_with({"id": '2'})
         self.assertEqual(500, response.status_code)
         self.assertEqual({"error": "database failure"}, response.json)
 
@@ -179,7 +230,7 @@ class RestApiTest(TestCase):
 
         response = client.delete("http://localhost:7000/accounts/2")
 
-        account_db_mock.select.assert_called_once_with({"id": 2})
+        account_db_mock.select.assert_called_once_with({"id": '2'})
         account_db_mock.delete.assert_not_called()
         self.assertEqual(404, response.status_code)
         self.assertEqual({"error": "account not found"}, response.json)

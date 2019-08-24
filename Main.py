@@ -3,14 +3,14 @@ from multiprocessing import Process
 from flask import Flask, request, make_response
 from flask.json import jsonify
 
-import DataBases.SqlLiteDB
+import DataBases.MongoDB
 
 app = Flask(__name__)
 
-account_db = DataBases.SqlLiteDB.SqlLiteDB({"id", "nick", "login", "password"})
+account_db = DataBases.MongoDB.MongoDB("accounts", {"id", "nick", "login", "password"})
 
 
-@app.route('/accounts/<int:account_id>', methods=["GET", "PUT", "DELETE"])
+@app.route('/accounts/<string:account_id>', methods=["GET", "PUT", "DELETE"])
 def account(account_id):
     account_dicts = account_db.select({"id": account_id})
     if not account_dicts:
@@ -27,6 +27,11 @@ def account(account_id):
 
 def account_put_handle(account_id):
     account_updated_data_dict = request.json
+
+    bad_columns = list(set(account_updated_data_dict) - account_db.columns)
+    if bad_columns:
+        return make_response(jsonify({"error": str(bad_columns) + " columns not found"}), 400)
+
     update_result = account_db.update({"id": account_id}, account_updated_data_dict)
     if not update_result:
         return make_response(jsonify({"error": "database failure"}), 500)
@@ -37,7 +42,7 @@ def account_delete_handle(account_id):
     delete_result = account_db.delete({"id": account_id})
     if not delete_result:
         return make_response(jsonify({"error": "database failure"}), 500)
-    return make_response(jsonify({}), 200)
+    return make_response('', 204)
 
 
 @app.route("/accounts", methods=["GET", "POST"])
@@ -51,11 +56,19 @@ def accounts():
 
 def accounts_post_handle():
     account_data_dict = request.json
+
+    bad_columns = list(set(account_data_dict) - account_db.columns)
+    if bad_columns:
+        return make_response(jsonify({"error": str(bad_columns) + " columns not found"}), 400)
+
     if 'id' in list(account_data_dict.keys()):
         return make_response(jsonify({"error": "id in account data dict"}), 400)
+
     insert_result = account_db.insert(account_data_dict)
+
     if not insert_result:
         return make_response(jsonify({"error": "database failure"}), 500)
+
     return make_response(jsonify(insert_result), 201)
 
 
