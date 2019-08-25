@@ -12,7 +12,7 @@ account_db = DataBases.MongoDB.MongoDB("accounts", {"id", "nick", "login", "pass
 
 @app.route('/')
 def hello():
-    return Response("work", mimetype='text/xml')
+    return Response("work")
 
 
 @app.route('/accounts/<string:account_id>', methods=["GET", "PUT", "DELETE"])
