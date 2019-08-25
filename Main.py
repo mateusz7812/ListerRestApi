@@ -10,6 +10,11 @@ app = Flask(__name__)
 account_db = DataBases.MongoDB.MongoDB("accounts", {"id", "nick", "login", "password"})
 
 
+@app.route('/')
+def hello():
+    make_response("hello", 200)
+
+
 @app.route('/accounts/<string:account_id>', methods=["GET", "PUT", "DELETE"])
 def account(account_id):
     account_dicts = account_db.select({"id": account_id})
