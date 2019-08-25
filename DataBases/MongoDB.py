@@ -18,7 +18,7 @@ def convert_id_for_response(raw_dict: dict):
 class MongoDB(DataBases.DataBaseInterface.DataBaseInterface):
     def __init__(self, table_name: str, columns):
         super().__init__(table_name, columns)
-        client = MongoClient("10.0.75.1")
+        client = MongoClient("localhost")
         self.coll = client.admin[table_name]
 
     def insert(self, data: dict) -> dict:
