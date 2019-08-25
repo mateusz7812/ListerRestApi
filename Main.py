@@ -1,6 +1,6 @@
 from multiprocessing import Process
 
-from flask import Flask, request, make_response
+from flask import Flask, request, make_response, Response
 from flask.json import jsonify
 
 import DataBases.MongoDB
@@ -12,7 +12,7 @@ account_db = DataBases.MongoDB.MongoDB("accounts", {"id", "nick", "login", "pass
 
 @app.route('/')
 def hello():
-    make_response("hello", 200)
+    return Response("work", mimetype='text/xml')
 
 
 @app.route('/accounts/<string:account_id>', methods=["GET", "PUT", "DELETE"])
